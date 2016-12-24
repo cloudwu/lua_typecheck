@@ -34,7 +34,11 @@ function internal_mt:__call(v)
 end
 
 function internal_mt:verify(v)
-	return type(v) == self._typename
+	if type(v) == self._typename then
+		return true
+	else
+		return false, "type mismatch " .. tostring(v) .. " is not " .. self._typename
+	end
 end
 
 -------- type enum
@@ -210,16 +214,15 @@ function struct_mt:__call(init)
 			end
 			obj[k] = type_obj(v)
 		end
+		for k,v in pairs(init) do
+			if not meta[k] then
+				error(tostring(k) .. " is not a valid key")
+			end
+		end
 	else
 		for k,type_obj in pairs(meta) do
 			local v = default[k]
 			obj[k] = type_obj(v)
-		end
-	end
-
-	for k,v in pairs(init) do
-		if not meta[k] then
-			error(tostring(k) .. " is not a valid key")
 		end
 	end
 	return obj
@@ -227,6 +230,9 @@ end
 
 function struct_mt:verify(obj)
 	local t = self._types
+	if type(obj) ~= "table" then
+		return false, "Is not a table"
+	end
 	for k,v in pairs(obj) do
 		local meta = t[k]
 		if not meta then
