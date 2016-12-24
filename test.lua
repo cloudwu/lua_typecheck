@@ -41,8 +41,9 @@ print(td.foo:verify(foo))
 foo.z = nil
 print(td.foo:verify(foo))
 foo.z = "a"
-assert(td.foo:verify(foo))
-foo.s = nil
-assert(td.foo:verify(foo))
+print(td.foo:verify(foo))
+foo.a[1] = nil
+print(td.foo:verify(foo))
+
 
 

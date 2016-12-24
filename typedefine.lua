@@ -116,7 +116,7 @@ function array_mt:verify(obj)
 		return false, "Not an table"
 	else
 		local t = self._array
-		local max
+		local max = 0
 		for idx, v in ipairs(obj) do
 			local ok, err = t:verify(v)
 			if not ok then
