@@ -1,29 +1,3 @@
---[[
-{
-  array = map["number:string"] {
-	[1] = "hello",
-  }
-
-}
-
-struct.xxx = "number"
-
-array["number"]
-
-{
-	a = type.number(1),
-	b = 1,
-	c = 2,
-}
-
-struct.xxx:new()
-struct.xxx:verify(a)
-
-
-
-map / array / object(table or nil) / number / boolean / string / enum
-]]
-
 local supported_type = {
 	type_map = true,
 	type_enum = true,
@@ -50,7 +24,9 @@ end
 
 function internal_mt:__call(v)
 	if v ~= nil then
-		assert(type(v) == self._typename)
+		if type(v) ~= self._typename then
+			error("type mismatch " .. tostring(v) .. " is not " .. self._typename)
+		end
 		return v
 	else
 		return self._default
@@ -222,31 +198,29 @@ end
 
 local struct_mt = { __metatable = "type_struct" , __tostring = type_tostring }; struct_mt.__index = struct_mt
 
-local function deepcopy(src, dest, meta)
-	for k,type_obj in pairs(meta) do
-		local v = src[k]
-		dest[k] = type_obj(v)
-	end
-end
-
-local function deepcopy_type(src, dest, meta)
-	for k, v in pairs(src) do
-		local t = meta[k]
-		if not t then
-			error(tostring(k) .. " is not a valid key")
-		end
-		if not t:verify(v) then
-			error(tostring(v) .. " is not a valid value for key " .. tostring(k))
-		end
-		dest[k] = t(v)
-	end
-end
-
 function struct_mt:__call(init)
 	local obj = {}
-	deepcopy(self._defaults, obj, self._types)
+	local meta = self._types
+	local default = self._defaults
 	if init then
-		deepcopy_type(init, obj, self._types)
+		for k,type_obj in pairs(meta) do
+			local v = init[k]
+			if v == nil then
+				v = default[k]
+			end
+			obj[k] = type_obj(v)
+		end
+	else
+		for k,type_obj in pairs(meta) do
+			local v = default[k]
+			obj[k] = type_obj(v)
+		end
+	end
+
+	for k,v in pairs(init) do
+		if not meta[k] then
+			error(tostring(k) .. " is not a valid key")
+		end
 	end
 	return obj
 end
@@ -261,8 +235,9 @@ function struct_mt:verify(obj)
 	end
 	for k,meta in pairs(t) do
 		local v = obj[k]
-		if not meta:verify(v) then
-			return false, string.format("Type mismatch : %s should be %s (%s)", k, meta, tostring(v))
+		local ok, err = meta:verify(v)
+		if not ok then
+			return false, string.format("Type mismatch : %s should be %s (%s)", k, meta, err)
 		end
 	end
 	return true
@@ -284,6 +259,11 @@ local function create_type(proto, t)
 		end
 	end
 	return setmetatable(t, struct_mt)
+end
+
+function types.struct(proto)
+	assert(type(proto) == "table", "Invalid type proto")
+	return create_type(proto, { _typename = "anonymous struct"})
 end
 
 local function define_type(_, typename, proto)
